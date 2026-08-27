@@ -95,3 +95,38 @@ workflow. In short:
 
 Never commit `.env` — it's gitignored. Only `.env.example` files are
 tracked.
+
+## Deployment
+
+The live site:
+
+- **Frontend:** https://jedad-dev.vercel.app (Vercel)
+- **Backend API:** https://jedad-dev.onrender.com/api (Render)
+- **Database:** Supabase Postgres — the same project used for local
+  development. There is no separate production database; local dev and
+  the live site share one Supabase instance.
+
+| Service | Hosts | Deploys from | Notes |
+|---|---|---|---|
+| Vercel | `frontend/` (static build) | `main` branch, root directory `frontend` | `VITE_API_URL` env var points at the Render backend. `frontend/vercel.json` rewrites all paths to `index.html` so client-side routes (e.g. `/mgmt-x7k2`) don't 404 on direct navigation. |
+| Render | `backend/` (Docker) | `main` branch, root directory `backend`, builds `backend/Dockerfile` | The container's `CMD` runs `prisma migrate deploy` before starting the server, so pending migrations apply automatically on every deploy. Env vars (`DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `CLOUDINARY_*`, `COOKIE_SECURE=true`, `FRONTEND_ORIGIN`) are set directly in Render's dashboard, not in any file. |
+| Supabase | Postgres database | — | Same project as local dev (see above). |
+
+**To redeploy:** push to `main` — both Vercel and Render auto-deploy from
+the GitHub repo, no manual steps needed.
+
+**Render free tier cold starts:** the free instance spins down after a
+period of inactivity. The first request after a spin-down takes roughly
+30–60 seconds to respond while the container restarts; subsequent
+requests are fast until it spins down again. This mainly affects the
+first visitor after a quiet stretch — expect a slow initial load
+occasionally.
+
+**Production-specific behavior in the backend code:**
+- CORS (`backend/src/index.ts`) allows only the origin(s) in
+  `FRONTEND_ORIGIN` — set to the Vercel URL in Render, defaults to
+  `localhost:5173` if unset.
+- The auth cookie (`backend/src/controllers/auth.controller.ts`) is
+  `secure` and `sameSite: "None"` when `COOKIE_SECURE=true`, required
+  because the frontend and backend are on different domains. Locally
+  (`COOKIE_SECURE=false`) it stays `sameSite: "Lax"` over plain HTTP.
