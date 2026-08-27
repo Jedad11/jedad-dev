@@ -20,13 +20,24 @@ export function ProjectAdminList({ projects, onChange }: { projects: Project[]; 
     }
   };
 
+  const move = async (index: number, direction: -1 | 1) => {
+    const target = projects[index + direction];
+    const current = projects[index];
+    if (!target) return;
+    await Promise.all([
+      api.patch(`/projects/${current.id}`, { order: target.order }),
+      api.patch(`/projects/${target.id}`, { order: current.order }),
+    ]);
+    onChange();
+  };
+
   if (projects.length === 0) {
     return <p className="font-thai text-sm text-bone-dim">No projects yet.</p>;
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {projects.map((project) =>
+      {projects.map((project, i) =>
         editingId === project.id ? (
           <ProjectForm
             key={project.id}
@@ -47,6 +58,22 @@ export function ProjectAdminList({ projects, onChange }: { projects: Project[]; 
               <p className="font-thai text-xs text-bone-dim">{project.titleTh}</p>
             </div>
             <div className="flex shrink-0 gap-2 font-mono text-xs">
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                className="rounded border border-slate px-2 py-1 text-bone-dim disabled:opacity-30"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === projects.length - 1}
+                className="rounded border border-slate px-2 py-1 text-bone-dim disabled:opacity-30"
+              >
+                ↓
+              </button>
               <button
                 type="button"
                 onClick={() => setEditingId(project.id)}
