@@ -9,10 +9,9 @@ import { uploadRoute } from "./routes/upload.route.js";
 
 const app = new Hono();
 
-const FRONTEND_ORIGINS = [
-  "http://localhost:5173",
-  ...(process.env.FRONTEND_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean) ?? []),
-];
+const FRONTEND_ORIGINS = process.env.FRONTEND_ORIGIN
+  ? process.env.FRONTEND_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean)
+  : ["http://localhost:5173"];
 
 app.use(
   "/api/*",
