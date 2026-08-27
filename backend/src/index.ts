@@ -9,12 +9,15 @@ import { uploadRoute } from "./routes/upload.route.js";
 
 const app = new Hono();
 
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
+const FRONTEND_ORIGINS = [
+  "http://localhost:5173",
+  ...(process.env.FRONTEND_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean) ?? []),
+];
 
 app.use(
   "/api/*",
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: FRONTEND_ORIGINS,
     credentials: true,
   })
 );

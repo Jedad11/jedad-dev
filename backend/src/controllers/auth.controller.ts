@@ -29,10 +29,13 @@ export async function login(c: Context) {
 
   const token = signAdminToken({ adminId: admin.id, username: admin.username });
 
+  const cookieSecure = process.env.COOKIE_SECURE === "true";
   setCookie(c, AUTH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.COOKIE_SECURE === "true",
-    sameSite: "Lax",
+    secure: cookieSecure,
+    // sameSite "None" requires secure cookies, and is only needed when the
+    // frontend and backend are on different domains (production, cross-origin).
+    sameSite: cookieSecure ? "None" : "Lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
