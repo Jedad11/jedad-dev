@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+
+# Prisma
+backend/prisma/generated/
+
+# OS/editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
