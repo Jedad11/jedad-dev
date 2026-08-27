@@ -2,6 +2,7 @@ import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { prisma } from "./lib/prisma.js";
 import { authRoute } from "./routes/auth.route.js";
 import { projectRoute } from "./routes/project.route.js";
 import { socialRoute } from "./routes/social.route.js";
@@ -21,7 +22,10 @@ app.use(
   })
 );
 
-app.get("/api/health", (c) => c.json({ ok: true }));
+app.get("/api/health", async (c) => {
+  await prisma.project.count();
+  return c.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 app.route("/api/auth", authRoute);
 app.route("/api/projects", projectRoute);

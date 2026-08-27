@@ -130,3 +130,32 @@ occasionally.
   `secure` and `sameSite: "None"` when `COOKIE_SECURE=true`, required
   because the frontend and backend are on different domains. Locally
   (`COOKIE_SECURE=false`) it stays `sameSite: "Lax"` over plain HTTP.
+
+### Keep-alive workflow
+
+`.github/workflows/keep-alive.yml` pings `GET /api/health` on the Render
+backend every 10 minutes (`schedule` + `workflow_dispatch`). This exists
+for two reasons, and is **not** dead weight even if it looks unused:
+
+- **Render's free web service spins down after ~15 minutes idle.** A
+  periodic ping keeps it warm so visitors don't eat the 30–60s cold-start
+  hit.
+- **Supabase's free project pauses after 7 days of zero database
+  activity**, and resuming a paused project requires manually clicking
+  "Restore" in the Supabase dashboard — it does not resume itself. The
+  health route does a real `prisma.project.count()` query (not just a
+  static 200), so the ping counts as DB activity too.
+
+The workflow fails (non-zero exit) if the response isn't a 200, which
+also means a real outage shows up as a GitHub Actions failure email —
+free uptime monitoring as a side effect.
+
+The production URL is read from the `BACKEND_HEALTH_URL` repository
+variable (Settings → Secrets and variables → Actions → Variables), not
+hardcoded in the workflow, so it's a one-line update if the Render URL
+ever changes.
+
+**Note:** GitHub's scheduler doesn't guarantee the exact 10-minute
+interval — during quiet periods for the repo, runs can be delayed. That's
+fine here; the goal is "at least once every few hours," not precise
+timing.
