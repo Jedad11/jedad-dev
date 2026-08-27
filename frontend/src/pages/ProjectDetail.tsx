@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Nav } from "../components/Nav";
 import { ErrorState } from "../components/ErrorState";
@@ -23,15 +23,37 @@ function Lightbox({
   onClose: () => void;
   onNavigate: (index: number) => void;
 }) {
+  const goPrev = () => onNavigate((index - 1 + images.length) % images.length);
+  const goNext = () => onNavigate((index + 1) % images.length);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowLeft") onNavigate((index - 1 + images.length) % images.length);
-      else if (e.key === "ArrowRight") onNavigate((index + 1) % images.length);
+      else if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "ArrowRight") goNext();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [index, images.length, onClose, onNavigate]);
+
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const DRAG_THRESHOLD = 50;
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    dragStart.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (!dragStart.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    dragStart.current = null;
+    if (Math.abs(dx) > DRAG_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0) goPrev();
+      else goNext();
+    }
+  };
 
   return (
     <div
@@ -52,10 +74,10 @@ function Lightbox({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onNavigate((index - 1 + images.length) % images.length);
+            goPrev();
           }}
           aria-label="Previous image"
-          className="absolute left-2 font-mono text-3xl text-bone-dim hover:text-marigold sm:left-6"
+          className="absolute left-1 z-10 rounded-full p-3 font-mono text-4xl leading-none text-bone-dim hover:bg-ink-2 hover:text-marigold sm:left-4 sm:p-4 sm:text-6xl"
         >
           ‹
         </button>
@@ -64,8 +86,11 @@ function Lightbox({
       <img
         src={images[index].url}
         alt=""
+        draggable={false}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90vh] max-w-[90vw] cursor-default rounded border border-slate object-contain"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        className="max-h-[90vh] max-w-[90vw] cursor-grab touch-pan-y select-none rounded border border-slate object-contain active:cursor-grabbing"
       />
 
       {images.length > 1 && (
@@ -73,10 +98,10 @@ function Lightbox({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onNavigate((index + 1) % images.length);
+            goNext();
           }}
           aria-label="Next image"
-          className="absolute right-2 font-mono text-3xl text-bone-dim hover:text-marigold sm:right-6"
+          className="absolute right-1 z-10 rounded-full p-3 font-mono text-4xl leading-none text-bone-dim hover:bg-ink-2 hover:text-marigold sm:right-4 sm:p-4 sm:text-6xl"
         >
           ›
         </button>
