@@ -4,13 +4,92 @@ import { Nav } from "../components/Nav";
 import { ErrorState } from "../components/ErrorState";
 import { useLanguage } from "../context/LanguageContext";
 import { api, ApiError } from "../lib/api";
-import type { Project } from "../types";
+import type { Project, ProjectImage } from "../types";
 
 type LoadState =
   | { status: "loading" }
   | { status: "error" }
   | { status: "not-found" }
   | { status: "ready"; data: Project };
+
+function Lightbox({
+  images,
+  index,
+  onClose,
+  onNavigate,
+}: {
+  images: ProjectImage[];
+  index: number;
+  onClose: () => void;
+  onNavigate: (index: number) => void;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowLeft") onNavigate((index - 1 + images.length) % images.length);
+      else if (e.key === "ArrowRight") onNavigate((index + 1) % images.length);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [index, images.length, onClose, onNavigate]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/95 p-4 sm:p-8"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute right-4 top-4 font-mono text-2xl text-bone-dim hover:text-marigold"
+      >
+        ×
+      </button>
+
+      {images.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate((index - 1 + images.length) % images.length);
+          }}
+          aria-label="Previous image"
+          className="absolute left-2 font-mono text-3xl text-bone-dim hover:text-marigold sm:left-6"
+        >
+          ‹
+        </button>
+      )}
+
+      <img
+        src={images[index].url}
+        alt=""
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[90vh] max-w-[90vw] cursor-default rounded border border-slate object-contain"
+      />
+
+      {images.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate((index + 1) % images.length);
+          }}
+          aria-label="Next image"
+          className="absolute right-2 font-mono text-3xl text-bone-dim hover:text-marigold sm:right-6"
+        >
+          ›
+        </button>
+      )}
+
+      {images.length > 1 && (
+        <p className="absolute bottom-4 font-mono text-xs text-bone-dim">
+          {index + 1} / {images.length}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function DetailSkeleton() {
   return (
@@ -27,6 +106,7 @@ export function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const { t, lang } = useLanguage();
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const load = () => {
     if (!id) return;
@@ -68,13 +148,19 @@ export function ProjectDetail() {
           <div className="rounded-lg border border-slate bg-ink-2 p-6">
             {state.data.images.length > 0 && (
               <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                {state.data.images.map((image) => (
-                  <img
+                {state.data.images.map((image, i) => (
+                  <button
                     key={image.id}
-                    src={image.url}
-                    alt=""
-                    className="w-full rounded border border-slate object-cover"
-                  />
+                    type="button"
+                    onClick={() => setLightboxIndex(i)}
+                    className="cursor-zoom-in"
+                  >
+                    <img
+                      src={image.url}
+                      alt=""
+                      className="w-full rounded border border-slate object-cover"
+                    />
+                  </button>
                 ))}
               </div>
             )}
@@ -125,6 +211,15 @@ export function ProjectDetail() {
           </div>
         )}
       </div>
+
+      {state.status === "ready" && lightboxIndex !== null && (
+        <Lightbox
+          images={state.data.images}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
     </div>
   );
 }
