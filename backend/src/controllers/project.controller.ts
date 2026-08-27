@@ -32,13 +32,15 @@ export async function createProject(c: Context) {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
 
-  const { liveUrl, githubUrl, ...rest } = parsed.data;
+  const { liveUrl, githubUrl, images, ...rest } = parsed.data;
   const project = await prisma.project.create({
     data: {
       ...rest,
       liveUrl: liveUrl || null,
       githubUrl: githubUrl || null,
+      images: { create: images },
     },
+    include: { images: { orderBy: { order: "asc" } } },
   });
 
   return c.json(project, 201);
@@ -52,19 +54,39 @@ export async function updateProject(c: Context) {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
 
-  const existing = await prisma.project.findUnique({ where: { id } });
+  const existing = await prisma.project.findUnique({
+    where: { id },
+    include: { images: true },
+  });
   if (!existing) {
     return c.json({ error: "Project not found" }, 404);
   }
 
-  const { liveUrl, githubUrl, ...rest } = parsed.data;
+  const { liveUrl, githubUrl, images, ...rest } = parsed.data;
+
+  if (images !== undefined) {
+    const keptPublicIds = new Set(images.map((img) => img.publicId));
+    const removedImages = existing.images.filter((img) => !keptPublicIds.has(img.publicId));
+    for (const image of removedImages) {
+      try {
+        await destroyImage(image.publicId);
+      } catch (err) {
+        console.error(`Failed to delete Cloudinary image ${image.publicId}:`, err);
+      }
+    }
+  }
+
   const project = await prisma.project.update({
     where: { id },
     data: {
       ...rest,
       ...(liveUrl !== undefined ? { liveUrl: liveUrl || null } : {}),
       ...(githubUrl !== undefined ? { githubUrl: githubUrl || null } : {}),
+      ...(images !== undefined
+        ? { images: { deleteMany: {}, create: images } }
+        : {}),
     },
+    include: { images: { orderBy: { order: "asc" } } },
   });
 
   return c.json(project);

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const projectImageInput = z.object({
+  url: z.string().url(),
+  publicId: z.string().min(1),
+  order: z.number().int().default(0),
+});
+
 export const createProjectSchema = z.object({
   order: z.number().int().default(0),
   titleTh: z.string().min(1, "Thai title is required"),
@@ -9,6 +15,7 @@ export const createProjectSchema = z.object({
   tags: z.array(z.string()).default([]),
   liveUrl: z.string().url().optional().or(z.literal("")),
   githubUrl: z.string().url().optional().or(z.literal("")),
+  images: z.array(projectImageInput).default([]),
 });
 
 export const updateProjectSchema = createProjectSchema.partial();
